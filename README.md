@@ -1,4 +1,4 @@
-# LR-XFL-Logical-Reasoning-based-Explainable-Federated-Learning
+# LR-XFL: Logical Reasoning-based Explainable Federated Learning
 
 ## Overview
 
