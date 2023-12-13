@@ -1,10 +1,8 @@
 # LR-XFL-Logical-Reasoning-based-Explainable-Federated-Learning
-Open-source code for AAAI-24 paper "LR-XFL: Logical Reasoning-based Explainable Federated Learning"
-
-# README for LR-XFL
 
 ## Overview
-This is the code for AAAI-24 Paper No. 7418. This repository contains LR-XFL model implementations and the experimental codes that produced the results documented in the paper.
+
+This is the open-source code for AAAI-24 paper "LR-XFL: Logical Reasoning-based Explainable Federated Learning". This repository contains LR-XFL model implementations and the experimental codes that produced the results documented in the paper.
 
 ## Directory Structure
 
@@ -26,4 +24,10 @@ This is the code for AAAI-24 Paper No. 7418. This repository contains LR-XFL mod
   - `mimic_tree.py`: Scripts to run the baseline distributed decision tree (DDT) on MIMIC-II dataset.
   
 - `results/`: Directory to store output and results from the project.
+
+## Acknowledgement
+
+The local client model is built based on the entropy-lens ([https://github.com/pietrobarbiero/entropy-lens](https://github.com/pietrobarbiero/entropy-lens)). We hereby greatly thank the authors of entropy-lens for their clear code and novel research.
+
+
 
