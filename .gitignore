@@ -1,1 +1,11 @@
-.DS_Store
+*.log
+__pycache__/
+*.csv
+*.h5
+*.zip
+*.tar.gz
+
+data/MNIST_EVEN_ODD/
+data/Shapes/
+data/mimic-ii/
+data/vdem/
