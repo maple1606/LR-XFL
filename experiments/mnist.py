@@ -104,7 +104,7 @@ explanations = {i: [] for i in range(n_classes)}
 
 # Constructing the filename
 filename = (
-    f"../results/"
+    f"results/"
     f"test_test_test_"
     f"MNIST_"
     f"FL_"
@@ -336,4 +336,3 @@ if explanations != None:
     # results_df.sem()
 else:
     print("No valid explanations")
-

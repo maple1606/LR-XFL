@@ -79,7 +79,7 @@ def load_mimic(base_dir: str = './data'):
     return x, y, features
 
 
-def load_celldiff(base_dir='./data'):
+def load_celldiff(base_dir='experiments/data'):
     gene_expression_matrix = pd.read_csv(f'{base_dir}/celldiff/data_matrix.csv', index_col=0)
     clustering_labels = pd.read_csv(f'{base_dir}/celldiff/cluster_labels.csv', index_col=0)
     biomarkers = pd.read_csv(f'{base_dir}/celldiff/markers.csv', index_col=0)
@@ -103,7 +103,7 @@ def load_celldiff(base_dir='./data'):
     return x, y, gene_expression_matrix.columns
 
 
-def load_vDem(base_dir='./data'):
+def load_vDem(base_dir='experiments/data'):
     data = pd.read_csv(f'{base_dir}/vdem/V-Dem-CY-Core-v12.csv')
     data['country_name_year'] = data['country_name'] + '_' + data['year'].astype(str)
     data_2000 = data[data['year'] > 2000].iloc[:, 12:-1].dropna(axis=1)
@@ -191,7 +191,7 @@ def load_vDem(base_dir='./data'):
     return x, c, y, data_mid.columns
 
 
-def load_mnist2(base_dir='./data'):
+def load_mnist2(base_dir='experiments/data'):
     train_data = torch.load(os.path.join(base_dir, 'MNIST_X_to_C/c2y_training.pt'))
     val_data = torch.load(os.path.join(base_dir, 'MNIST_X_to_C/c2y_validation.pt'))
     test_data = torch.load(os.path.join(base_dir, 'MNIST_X_to_C/c2y_test.pt'))
@@ -206,8 +206,8 @@ def load_mnist2(base_dir='./data'):
     return train_data, val_data, test_data, concept_names
 
 
-def load_mnist(base_dir='./data'):
-    train_data = pd.read_csv(os.path.join(base_dir, 'MNIST_C_to_Y/mnist.csv'), header=None)
+def load_mnist(base_dir='experiments/data'):
+    train_data = pd.read_csv(os.path.join(base_dir, 'MNIST_C_to_Y/mnist_train.csv'), header=None)
     x = train_data.iloc[:, :-1].values
     y = train_data.iloc[:, -1].values
     concept_names = [f'feature{i:03}' for i in range(x.shape[1])]
@@ -217,7 +217,7 @@ def load_mnist(base_dir='./data'):
     return x, y, concept_names
 
 
-def load_cub2(base_dir='./data'):
+def load_cub2(base_dir='experiments/data'):
     train_data = pd.read_csv(os.path.join(base_dir, 'CUB/cub200.csv'))
     x = train_data.iloc[:, :-1].values
     y = train_data.iloc[:, -1].values
@@ -229,7 +229,7 @@ def load_cub2(base_dir='./data'):
     return x, y, concept_names
 
 
-def load_cub(base_dir='./data'):
+def load_cub(base_dir='experiments/data'):
     train_data = pd.read_csv(os.path.join(base_dir, 'CUB/cub200.csv'))
     x = train_data.iloc[:, :-1].values
     y = train_data.iloc[:, -1].values
