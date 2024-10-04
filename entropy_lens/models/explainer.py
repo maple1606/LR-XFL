@@ -14,7 +14,7 @@ import pytorch_lightning as pl
 
 from entropy_lens.logic.nn.entropy import explain_class
 from entropy_lens.logic.metrics import test_explanation, complexity
-from entropy_lens.nn.functional import entropy_logic_loss
+from entropy_lens.nn.functional.loss import entropy_logic_loss
 from entropy_lens.nn.logic import EntropyLinear
 
 

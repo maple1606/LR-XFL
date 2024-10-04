@@ -11,14 +11,13 @@ from sklearn.metrics import f1_score, accuracy_score
 from collections import Counter
 import random
 
-
 from entropy_lens.models.explainer import Explainer
 from entropy_lens.logic.metrics import formula_consistency
 from experiments.data.load_datasets import load_mnist, add_noise
 from experiments.data.data_sampling import mnist_iid, mnist_noniid, mnist_noniid_unequal, mnist_noniid_per_class
-from local_training import local_train
-from utils import average_weights, average_weights_class, max_weights, max_weights_class, weighted_weights
-from global_logic_aggregate import _global_aggregate_explanations, client_selection_class
+from experiments.local_training import local_train
+from experiments.utils import average_weights, average_weights_class, max_weights, max_weights_class, weighted_weights
+from experiments.global_logic_aggregate import _global_aggregate_explanations, client_selection_class
 from entropy_lens.logic.utils import replace_names
 from entropy_lens.logic.metrics import test_explanation, complexity
 import logging
@@ -28,7 +27,7 @@ warnings.filterwarnings('ignore')
 
 # logging.getLogger("lightning.pytorch.utilities.rank_zero").setLevel(logging.ERROR) # %% md
 # logging.getLogger('lightning').setLevel(0)
-utilities.distributed.log.setLevel(logging.ERROR)
+logging.getLogger("pytorch_lightning").setLevel(logging.ERROR)
 
 ## Import MIMIC-II dataset
 

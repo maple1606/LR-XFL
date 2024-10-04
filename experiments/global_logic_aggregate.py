@@ -2,7 +2,7 @@ import numpy as np
 from sklearn.metrics import f1_score, accuracy_score
 from entropy_lens.logic.nn.entropy import explain_class
 from entropy_lens.logic.metrics import test_explanation, complexity
-from entropy_lens.nn.functional import entropy_logic_loss
+from entropy_lens.nn.functional.loss import entropy_logic_loss
 from entropy_lens.nn.logic import EntropyLinear
 from sympy import simplify_logic
 from entropy_lens.logic.utils import replace_names

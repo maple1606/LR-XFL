@@ -4,6 +4,7 @@ __pycache__/
 *.h5
 *.zip
 *.tar.gz
+.DS_Store
 
 data/MNIST_EVEN_ODD/
 data/Shapes/

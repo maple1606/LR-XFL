@@ -7,7 +7,7 @@ from sympy import simplify_logic
 
 from entropy_lens.logic.metrics import test_explanation
 from entropy_lens.logic.utils import replace_names
-from entropy_lens.nn import Conceptizator
+from entropy_lens.nn.concepts import Conceptizator
 from entropy_lens.nn.logic import EntropyLinear
 
 
