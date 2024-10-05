@@ -6,6 +6,7 @@ import os
 import pandas as pd
 import numpy as np
 import time
+import torch
 import copy
 from torch.utils.data import DataLoader, TensorDataset, random_split, Subset, ConcatDataset
 import random
@@ -14,6 +15,9 @@ from pytorch_lightning.callbacks import ModelCheckpoint
 from pytorch_lightning import Trainer, seed_everything, utilities
 from sklearn.metrics import f1_score, accuracy_score
 from collections import Counter
+from torch.utils.data import DataLoader, TensorDataset
+import torch.nn.functional as F
+from torch.utils.data import DataLoader, TensorDataset
 
 from entropy_lens.models.explainer import Explainer
 from entropy_lens.logic.metrics import formula_consistency
@@ -172,8 +176,13 @@ for seed in range(n_seeds):
                 for f in local_explanation_f[user_id]:
                     if f['explanation_connector'] is not None:
                         global_connector_class[f['target_class']].append(f['explanation_connector'])
-        global_y_test_out = global_trainer.predict(global_model, dataloaders=test_data.dataset.tensors[0][test_data.indices])
-        global_y_test_out = squeeze(stack(global_y_test_out, dim=0), dim=1)
+        test_dataset = TensorDataset(test_data.dataset.tensors[0][test_data.indices])
+        test_loader = DataLoader(test_dataset, batch_size=32) 
+
+        global_y_test_out = global_trainer.predict(global_model, dataloaders=test_loader)
+        max_size = max([t.size(0) for t in global_y_test_out])
+        padded_tensors = [F.pad(t, (0, 0, 0, max_size - t.size(0))) for t in global_y_test_out]
+        global_y_test_out = squeeze(stack(padded_tensors, dim=0), dim=1)
 
         """user_to_engage_class refers to the the clients holding the top accuracy;
         local_explanations_accuracy_class includes rule -> (rule, highest acc, clients holding the top accuracy);
@@ -213,7 +222,39 @@ for seed in range(n_seeds):
                                                                     test_data.dataset.tensors[1][test_data.indices],
                                                                     target_class)
             if global_y_formula_class is not None:
-                global_explanation_fidelity_class = accuracy_score(global_y_test_out.argmax(dim=1).eq(target_class), global_y_formula_class)
+                # Get the minimum length of the two arrays
+                min_len = min(len(global_y_test_out), len(global_y_formula_class))
+
+                # Trim both arrays to the same length
+                global_y_test_out_trimmed = global_y_test_out[:min_len].argmax(dim=1)  # Convert to class labels
+                global_y_formula_class_trimmed = global_y_formula_class[:min_len]
+
+                if isinstance(global_y_formula_class_trimmed, np.ndarray):
+                    global_y_formula_class_trimmed = torch.tensor(global_y_formula_class_trimmed)
+
+                    # Convert to binary labels (0 or 1) for both outputs and formula
+                    global_y_test_binary = (global_y_test_out_trimmed == target_class).to(torch.int).flatten()  # Binary: 1 if equal to target_class, else 0
+                    global_y_formula_binary = (global_y_formula_class_trimmed == target_class).to(torch.int).flatten()
+
+                # Check the shapes of both arrays to ensure they are the same
+                print(f"global_y_test_binary shape: {global_y_test_binary.shape}")
+                print(f"global_y_formula_binary shape: {global_y_formula_binary.shape}")
+
+                # Ensure both arrays have the same length
+                min_len = min(global_y_test_binary.shape[0], global_y_formula_binary.shape[0])
+                global_y_test_binary = global_y_test_binary[:min_len]
+                global_y_formula_binary = global_y_formula_binary[:min_len]
+
+                # Now compute the accuracy score
+                global_explanation_fidelity_class = accuracy_score(global_y_test_binary.cpu(), global_y_formula_binary.cpu())
+
+                # Print the accuracy result
+                print(f"Global Explanation Fidelity Class Accuracy: {global_explanation_fidelity_class}")
+
+                global_y_formula_binary = (global_y_formula_class_trimmed == target_class).to(torch.int).flatten()
+
+                # Compute accuracy score with trimmed arrays
+                global_explanation_fidelity_class = accuracy_score(global_y_test_binary, global_y_formula_binary)
                 global_explanation_fidelity += global_explanation_fidelity_class
             global_explanation_accuracy += global_explanation_accuracy_class
             if concept_names is not None and global_explanation_class is not None:
@@ -288,36 +329,48 @@ for seed in range(n_seeds):
         # global model validation
         global_model_validation_results = global_trainer.test(copy.deepcopy(global_model), dataloaders=val_loader)
         global_model_results_list.append(global_model_validation_results)
-        # decide if early stop using the validation results
-        if len(global_model_results_list) > 1:
-            if global_model_results_list[-1][0]['test_acc_epoch'] <= global_model_results_list[-2][0]['test_acc_epoch']:
-                print('Global model has reached best performance.')
-                global_model_results = global_trainer.test(copy.deepcopy(global_model), dataloaders=test_loader)
-                print('---------------------------')
-                print('Global model accuracy:', global_model_results[0]['test_acc_epoch'])
-                print('Global rule mean accuracy', global_explanation_accuracy / n_classes)
-                print('Global rule mean fidelity', global_explanation_fidelity / n_classes)
-                print('---------------------------')
-                with open(filename, 'a') as file:  # 'a' will append to the existing file
-                    file.write('---------------------------\n')
-                    file.write('Global model has reached best performance in the last epoch.\n')
-                    file.write(f'Global model accuracy: {global_model_results[0]["test_acc_epoch"]}\n')
-                    file.write(f'Global rule mean accuracy: {global_explanation_accuracy / n_classes}\n')
-                    file.write(f'Global rule mean fidelity: {global_explanation_fidelity / n_classes}\n')
-                    file.write('---------------------------\n')
-                # break
-        global_model_results = global_trainer.test(copy.deepcopy(global_model), dataloaders=test_loader)
-        print('---------------------------')
-        print('Global model accuracy:', global_model_results[0]['test_acc_epoch'])
-        print('Global rule mean accuracy', global_explanation_accuracy/n_classes)
-        print('Global rule mean fidelity', global_explanation_fidelity/n_classes)
-        print('---------------------------')
-        with open(filename, 'a') as file:  # 'a' will append to the existing file
-            file.write('---------------------------\n')
-            file.write(f'Global model accuracy: {global_model_results[0]["test_acc_epoch"]}\n')
-            file.write(f'Global rule mean accuracy: {global_explanation_accuracy / n_classes}\n')
-            file.write(f'Global rule mean fidelity: {global_explanation_fidelity / n_classes}\n')
-            file.write('---------------------------\n')
+        valid_data = []
+        for item in test_loader.dataset:
+            if isinstance(item, tuple) and len(item) == 2:
+                valid_data.append(item)
+        if valid_data:
+            x_data, y_data = zip(*valid_data)  
+            x_tensor = torch.stack(x_data)  
+            y_tensor = torch.stack(y_data) 
+
+            valid_dataset = TensorDataset(x_tensor, y_tensor)
+            valid_test_loader = DataLoader(valid_dataset, batch_size=32, shuffle=False)
+            # decide if early stop using the validation results
+            if len(global_model_results_list) > 1:
+                if global_model_results_list[-1][0]['test_acc_epoch'] <= global_model_results_list[-2][0]['test_acc_epoch']:
+                    print('Global model has reached best performance.')
+
+                    global_model_results = global_trainer.test(copy.deepcopy(global_model), dataloaders=valid_test_loader)
+                    print('---------------------------')
+                    print('Global model accuracy:', global_model_results[0]['test_acc_epoch'])
+                    print('Global rule mean accuracy', global_explanation_accuracy / n_classes)
+                    print('Global rule mean fidelity', global_explanation_fidelity / n_classes)
+                    print('---------------------------')
+                    with open(filename, 'a') as file:  # 'a' will append to the existing file
+                        file.write('---------------------------\n')
+                        file.write('Global model has reached best performance in the last epoch.\n')
+                        file.write(f'Global model accuracy: {global_model_results[0]["test_acc_epoch"]}\n')
+                        file.write(f'Global rule mean accuracy: {global_explanation_accuracy / n_classes}\n')
+                        file.write(f'Global rule mean fidelity: {global_explanation_fidelity / n_classes}\n')
+                        file.write('---------------------------\n')
+                    # break
+            global_model_results = global_trainer.test(copy.deepcopy(global_model), dataloaders=valid_test_loader)
+            print('---------------------------')
+            print('Global model accuracy:', global_model_results[0]['test_acc_epoch'])
+            print('Global rule mean accuracy', global_explanation_accuracy/n_classes)
+            print('Global rule mean fidelity', global_explanation_fidelity/n_classes)
+            print('---------------------------')
+            with open(filename, 'a') as file:  # 'a' will append to the existing file
+                file.write('---------------------------\n')
+                file.write(f'Global model accuracy: {global_model_results[0]["test_acc_epoch"]}\n')
+                file.write(f'Global rule mean accuracy: {global_explanation_accuracy / n_classes}\n')
+                file.write(f'Global rule mean fidelity: {global_explanation_fidelity / n_classes}\n')
+                file.write('---------------------------\n')
 
 if explanations != None:
     consistencies = []
