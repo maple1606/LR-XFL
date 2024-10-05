@@ -74,7 +74,7 @@ explanations = {i: [] for i in range(n_classes)}
 
 # Constructing the filename
 filename = (
-    f"../results/"
+    f"results/"
     f"CUB_"
     f"FL_"
     f"tree_"

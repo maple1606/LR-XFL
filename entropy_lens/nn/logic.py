@@ -3,6 +3,7 @@ import math
 import torch
 from torch import Tensor
 from torch import nn
+import torch.nn.functional as F
 
 from .concepts import Conceptizator
 
@@ -35,6 +36,23 @@ class EntropyLinear(nn.Module):
             nn.init.uniform_(self.bias, -bound, bound)
 
     def forward(self, input: Tensor) -> Tensor:
+        if not isinstance(input, torch.Tensor):
+            # Find the maximum size in each dimension
+            max_size = [max(tensor.shape[i] for tensor in input) for i in range(len(input[0].shape))]
+
+            # Pad all tensors to the same size
+            padded_tensors = []
+            for tensor in input:
+                # Calculate the padding for each dimension
+                pad = []
+                for i in range(len(tensor.shape) - 1, -1, -1):
+                    pad.extend([0, max_size[i] - tensor.shape[i]])
+                padded_tensor = F.pad(tensor, pad, "constant", 0)  # Pad with zeros
+                padded_tensors.append(padded_tensor)
+            
+            # Stack the padded tensors into a single tensor
+            input = torch.stack(padded_tensors)
+
         if len(input.shape) == 2:
             input = input.unsqueeze(0)
         self.conceptizator.concepts = input

@@ -1,12 +1,13 @@
 *.log
 __pycache__/
 *.csv
-*.h5
-*.zip
-*.tar.gz
+*.tgz
+*.npy
 .DS_Store
 
 data/MNIST_EVEN_ODD/
+data/CUB_200_2011
 data/Shapes/
 data/mimic-ii/
 data/vdem/
+results/

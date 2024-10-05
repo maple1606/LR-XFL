@@ -7,20 +7,22 @@ import pandas as pd
 import numpy as np
 import time
 import copy
+import torch
 from torch.utils.data import DataLoader, TensorDataset, random_split, Subset, ConcatDataset
 from torch import stack, squeeze
 from pytorch_lightning.callbacks import ModelCheckpoint
 from pytorch_lightning import Trainer, seed_everything, utilities
 from sklearn.metrics import f1_score, accuracy_score
 from collections import Counter
+import torch.nn.functional as F
 
 from entropy_lens.models.explainer import Explainer
 from entropy_lens.logic.metrics import formula_consistency
 from experiments.data.load_datasets import load_mimic, add_noise
 from experiments.data.data_sampling import mimic_iid, mimic_noniid, mimic_noniid_per_class
-from local_training import local_train
-from utils import average_weights, average_weights_class, weighted_weights, max_weights, max_weights_class
-from global_logic_aggregate import _global_aggregate_explanations, client_selection_class
+from experiments.local_training import local_train
+from experiments.utils import average_weights, average_weights_class, weighted_weights, max_weights, max_weights_class
+from experiments.global_logic_aggregate import _global_aggregate_explanations, client_selection_class
 from entropy_lens.logic.utils import replace_names
 from entropy_lens.logic.metrics import test_explanation, complexity
 import logging
@@ -97,7 +99,7 @@ explanations = {i: [] for i in range(n_classes)}
 
 # Constructing the filename
 filename = (
-    f"../results/"
+    f"results/"
     f"MIMIC_"
     f"FL_"
     f"ClientNum_{num_users}_"
@@ -167,8 +169,12 @@ for seed in range(n_seeds):
                 for f in local_explanation_f[user_id]:
                     if f['explanation_connector'] is not None:
                         global_connector_class[f['target_class']].append(f['explanation_connector'])
-        global_y_test_out = global_trainer.predict(global_model, dataloaders=test_data.dataset.tensors[0][test_data.indices])
-        global_y_test_out = squeeze(stack(global_y_test_out, dim=0), dim=1)
+        test_loader = DataLoader(Subset(test_data.dataset, test_data.indices), batch_size=64)
+        global_y_test_out = global_trainer.predict(global_model, dataloaders=test_loader)
+
+        max_size = max([t.size(0) for t in global_y_test_out])
+        padded_tensors = [F.pad(t, (0, 0, 0, max_size - t.size(0))) for t in global_y_test_out]
+        global_y_test_out = squeeze(stack(padded_tensors, dim=0), dim=1)
 
         """user_to_engage_class refers to the the clients holding the top accuracy;
         local_explanations_accuracy_class includes rule -> (rule, highest acc, clients holding the top accuracy);
@@ -208,7 +214,39 @@ for seed in range(n_seeds):
                                                                     test_data.dataset.tensors[1][test_data.indices],
                                                                     target_class)
             if global_y_formula_class is not None:
-                global_explanation_fidelity_class = accuracy_score(global_y_test_out.argmax(dim=1).eq(target_class), global_y_formula_class)
+                # Get the minimum length of the two arrays
+                min_len = min(len(global_y_test_out), len(global_y_formula_class))
+
+                # Trim both arrays to the same length
+                global_y_test_out_trimmed = global_y_test_out[:min_len].argmax(dim=1)  # Convert to class labels
+                global_y_formula_class_trimmed = global_y_formula_class[:min_len]
+
+                if isinstance(global_y_formula_class_trimmed, np.ndarray):
+                    global_y_formula_class_trimmed = torch.tensor(global_y_formula_class_trimmed)
+
+                    # Convert to binary labels (0 or 1) for both outputs and formula
+                    global_y_test_binary = (global_y_test_out_trimmed == target_class).to(torch.int).flatten()  # Binary: 1 if equal to target_class, else 0
+                    global_y_formula_binary = (global_y_formula_class_trimmed == target_class).to(torch.int).flatten()
+
+                # Check the shapes of both arrays to ensure they are the same
+                print(f"global_y_test_binary shape: {global_y_test_binary.shape}")
+                print(f"global_y_formula_binary shape: {global_y_formula_binary.shape}")
+
+                # Ensure both arrays have the same length
+                min_len = min(global_y_test_binary.shape[0], global_y_formula_binary.shape[0])
+                global_y_test_binary = global_y_test_binary[:min_len]
+                global_y_formula_binary = global_y_formula_binary[:min_len]
+
+                # Now compute the accuracy score
+                global_explanation_fidelity_class = accuracy_score(global_y_test_binary.cpu(), global_y_formula_binary.cpu())
+
+                # Print the accuracy result
+                print(f"Global Explanation Fidelity Class Accuracy: {global_explanation_fidelity_class}")
+
+                global_y_formula_binary = (global_y_formula_class_trimmed == target_class).to(torch.int).flatten()
+
+                # Compute accuracy score with trimmed arrays
+                global_explanation_fidelity_class = accuracy_score(global_y_test_binary, global_y_formula_binary)
                 global_explanation_fidelity += global_explanation_fidelity_class
             global_explanation_accuracy += global_explanation_accuracy_class
             if concept_names is not None and global_explanation_class is not None:

@@ -82,9 +82,13 @@ def explain_class(model: torch.nn.Module, x, y1h, x_val: torch.Tensor, y_val1h: 
 
 
             connector = 'AND'
-            if torch.trace(class_concept_co_occ['positive']) / torch.sum(class_concept_co_occ['positive']) > 0.9 or \
-                    max_neg_row_sum / rules_length > 0.8:
-                connector = 'OR'
+            if rules_length == 0:
+                # Handle the case where no valid rules are generated
+                print("No valid rules generated.")
+                return None, None, None
+            else:
+                if torch.trace(class_concept_co_occ['positive']) / torch.sum(class_concept_co_occ['positive']) > 0.9 or max_neg_row_sum / rules_length > 0.8:
+                    connector = 'OR'
             # connector = 'OR'
 
             # aggregate local explanations and replace concept names in the final formula

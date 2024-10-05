@@ -57,8 +57,8 @@ print(n_classes)
 
 
 # sample the data into different data silos
-# sample = 'iid'
-sample = 'non-iid'
+sample = 'iid'
+# sample = 'non-iid'
 unequal = True
 per_class = True
 num_users = 10
@@ -91,7 +91,7 @@ explanations = {i: [] for i in range(n_classes)}
 
 # Constructing the filename
 filename = (
-    f"../results/"
+    f"results/"
     f"test_"
     f"MNIST_"
     f"FL_"
@@ -147,10 +147,13 @@ for user in range(num_users):
             synthetic_example_x = np.mean(train_data_user_X, axis=0).reshape(1, -1)
             synthetic_example_y = np.array([missing_class])
 
-            train_data_user_X = np.vstack([train_data_user_X, synthetic_example_x])
+            train_data_user_X = np.empty((0, synthetic_example_x.shape[1])) 
             train_data_user_y = np.hstack([train_data_user_y, synthetic_example_y])
 
-    local_decision_trees[user].fit(train_data_user_X, train_data_user_y)
+    if train_data_user_X.shape[0] > 0:  # Ensure there are samples
+        local_decision_trees[user].fit(train_data_user_X, train_data_user_y)
+    else:
+        print(f"User {user} has no data to train on.")
 
 
 def tree_rules(tree, feature_names):

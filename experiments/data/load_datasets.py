@@ -12,7 +12,7 @@ from torch.nn.functional import one_hot
 from torch.utils.data import TensorDataset, random_split
 
 
-def load_mimic(base_dir: str = './data'):
+def load_mimic(base_dir: str = 'experiments/data'):
     data = pd.read_csv(f'{base_dir}/mimic-ii/full_cohort_data.csv')
     # data.drop('hgb_first')
     fs = [

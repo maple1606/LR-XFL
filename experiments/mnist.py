@@ -11,6 +11,7 @@ from sklearn.metrics import f1_score, accuracy_score
 from collections import Counter
 import random
 
+
 from entropy_lens.models.explainer import Explainer
 from entropy_lens.logic.metrics import formula_consistency
 from experiments.data.load_datasets import load_mnist, add_noise
@@ -27,7 +28,7 @@ warnings.filterwarnings('ignore')
 
 # logging.getLogger("lightning.pytorch.utilities.rank_zero").setLevel(logging.ERROR) # %% md
 # logging.getLogger('lightning').setLevel(0)
-logging.getLogger("pytorch_lightning").setLevel(logging.ERROR)
+utilities.distributed.log.setLevel(logging.ERROR)
 
 ## Import MIMIC-II dataset
 

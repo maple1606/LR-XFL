@@ -19,9 +19,9 @@ from entropy_lens.models.explainer import Explainer
 from entropy_lens.logic.metrics import formula_consistency
 from experiments.data.load_datasets import load_cub, load_cub2, add_noise
 from experiments.data.data_sampling import cub_iid, cub_noniid_per_class, cub_noniid
-from local_training import local_train
-from utils import average_weights, average_weights_class, weighted_weights, max_weights, max_weights_class
-from global_logic_aggregate import _global_aggregate_explanations, client_selection_class
+from experiments.local_training import local_train
+from experiments.utils import average_weights, average_weights_class, weighted_weights, max_weights, max_weights_class
+from experiments.global_logic_aggregate import _global_aggregate_explanations, client_selection_class
 from entropy_lens.logic.utils import replace_names
 from entropy_lens.logic.metrics import test_explanation, complexity
 import logging
@@ -99,7 +99,7 @@ explanations = {i: [] for i in range(n_classes)}
 
 # Constructing the filename
 filename = (
-    f"../results/"
+    f"results/"
     f"CUB_"
     f"FL_"
     f"ClientNum_{num_users}_"

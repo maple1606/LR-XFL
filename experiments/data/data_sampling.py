@@ -11,12 +11,17 @@ def mnist_iid(dataset, num_users):
     :param num_users:
     :return: dict of image index
     """
-    num_items = int(len(dataset)/num_users)
-    dict_users, all_idxs = {}, [i for i in range(len(dataset))]
+    num_items = len(dataset) // num_users  # Items per user
+    dict_users = {}
+    all_idxs = np.arange(len(dataset))
+
+    np.random.shuffle(all_idxs)  
     for i in range(num_users):
-        dict_users[i] = set(np.random.choice(all_idxs, num_items,
-                                             replace=False))
-        all_idxs = list(set(all_idxs) - dict_users[i])
+        if i < num_users - 1:
+            dict_users[i] = set(all_idxs[i * num_items: (i + 1) * num_items])
+        else:
+            dict_users[i] = set(all_idxs[i * num_items:])
+    
     return dict_users
 
 
