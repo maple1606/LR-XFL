@@ -207,9 +207,10 @@ def load_mnist2(base_dir='experiments/data'):
 
 
 def load_mnist(base_dir='experiments/data'):
-    train_data = pd.read_csv(os.path.join(base_dir, 'MNIST_C_to_Y/mnist_train.csv'), header=None)
+    train_data = pd.read_csv(os.path.join(base_dir, 'MNIST_C_to_Y/mnist.csv'), header=None)
     x = train_data.iloc[:, :-1].values
     y = train_data.iloc[:, -1].values
+    print(y)
     concept_names = [f'feature{i:03}' for i in range(x.shape[1])]
 
     x = torch.FloatTensor(x)

@@ -9,11 +9,17 @@ from entropy_lens.logic.utils import replace_names
 
 
 def client_selection_class(n_classes, num_users, local_explanation_f):
+    print(n_classes)
+    print(num_users)
     # if all(value is None for value in local_explanation.values()):
     user_to_engage_class = {}
     # local_explanation_accuracy = {}
     local_explanations_accuracy_class = {}
     local_explanations_support_class = {}
+
+    for m in range(len(local_explanation_f)):
+        print(f"Client {m} explanations: {local_explanation_f[m]}")
+
 
     for target_class in range(n_classes):
         local_explanations_accuracy = {}

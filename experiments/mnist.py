@@ -10,6 +10,8 @@ from torch import stack, squeeze
 from sklearn.metrics import f1_score, accuracy_score
 from collections import Counter
 import random
+import torch.nn.functional as F
+import torch
 
 
 from entropy_lens.models.explainer import Explainer
@@ -136,12 +138,13 @@ for seed in range(n_seeds):
     train_loader_users, val_loader_users, test_loader_users = [], [], []
     for user in range(num_users):
         # generate a number between (0, 1), if the number > noise threshold, the client receives noisy data only
+        noise_n = random.random()
         train_size_user = int(len(user_groups_train[user]) * 0.9)
         val_size_user = (len(user_groups_train[user]) - train_size_user) // 2
         test_size_user = len(user_groups_train[user]) - train_size_user - val_size_user
         train_data_user, val_data_user, test_data_user = random_split(
             Subset(train_data, list(user_groups_train[user])), [train_size_user, val_size_user, test_size_user])
-        if noise_type == 'client' and client_noise_n[user] > client_noise_threshold:
+        if noise_type == 'client' and noise_n > client_noise_threshold:
             train_data_user, val_data_user, test_data_user = random_split(
                 Subset(train_data_noise, list(user_groups_train[user])), [train_size_user, val_size_user, test_size_user])
         train_loader_user = DataLoader(train_data_user, batch_size=len(train_data_user))
@@ -151,8 +154,8 @@ for seed in range(n_seeds):
         val_loader_users.append(val_loader_user)
         test_loader_users.append(test_loader_user)
 
-    global_model = Explainer(n_concepts=n_concepts, n_classes=n_classes, l1=0.0000001, temperature=1, lr=0.01,
-                        explainer_hidden=[10], conceptizator='identity_bool')
+    global_model = Explainer(n_concepts=n_concepts, n_classes=n_classes, l1=0.0001, temperature=0.7, lr=0.01,
+                        explainer_hidden=[20])
     global_trainer = Trainer(max_epochs=0, gpus=1, auto_lr_find=True, deterministic=True,
                              check_val_every_n_epoch=1, default_root_dir=base_dir,
                              weights_save_path=base_dir)
@@ -167,17 +170,21 @@ for seed in range(n_seeds):
         users_for_train = [i for i in range(num_users)]
         for user_id in users_for_train:
             local_weights[user_id], local_concept_mask[user_id], local_results[user_id], local_explanation_f[user_id] \
-                = local_train(user_id, epochs=5, train_loader=train_loader_users[user_id],
+                = local_train(user_id, epochs=20, train_loader=train_loader_users[user_id],
                               val_loader=val_loader_users[user_id], test_loader=test_loader_users[user_id],
                               n_classes=n_classes, n_concepts=n_concepts, concept_names=concept_names, base_dir=base_dir,
                               results_list=results_list, explanations=explanations, model=copy.deepcopy(global_model),
-                              topk_explanations=50, verbose=False, x_to_bool=None, logic_generation_threshold=0.5)
+                              topk_explanations=50, verbose=False, logic_generation_threshold=0.7)
             if local_explanation_f[user_id] is not None:
                 for f in local_explanation_f[user_id]:
                     if f['explanation_connector'] is not None:
                         global_connector_class[f['target_class']].append(f['explanation_connector'])
-        global_y_test_out = global_trainer.predict(global_model, dataloaders=test_data.dataset.tensors[0][test_data.indices])
-        global_y_test_out = squeeze(stack(global_y_test_out, dim=0), dim=1)
+        test_loader = DataLoader(Subset(test_data.dataset, test_data.indices), batch_size=64)
+        global_y_test_out = global_trainer.predict(global_model, dataloaders=test_loader)
+
+        max_size = max([t.size(0) for t in global_y_test_out])
+        padded_tensors = [F.pad(t, (0, 0, 0, max_size - t.size(0))) for t in global_y_test_out]
+        global_y_test_out = squeeze(stack(padded_tensors, dim=0), dim=1)
 
         """user_to_engage_class refers to the the clients holding the top accuracy;
         local_explanations_accuracy_class includes rule -> (rule, highest acc, clients holding the top accuracy);
@@ -206,7 +213,7 @@ for seed in range(n_seeds):
             global_explanation_class, global_accuracy_class, user_to_engage_class[target_class] = _global_aggregate_explanations(
                 local_explanations_accuracy_class[target_class],
                 local_explanations_support_class[target_class],
-                topk_explanations=10, target_class=target_class,
+                topk_explanations=5, target_class=target_class,
                 x=val_data.dataset.tensors[0][val_data.indices],
                 y=val_data.dataset.tensors[1][val_data.indices],
                 concept_names=concept_names, user_engagement_scale='large', connector=global_connector, beam_width=4)
@@ -217,7 +224,39 @@ for seed in range(n_seeds):
                                                                     test_data.dataset.tensors[1][test_data.indices],
                                                                     target_class)
             if global_y_formula_class is not None:
-                global_explanation_fidelity_class = accuracy_score(global_y_test_out.argmax(dim=1).eq(target_class), global_y_formula_class)
+                # Get the minimum length of the two arrays
+                min_len = min(len(global_y_test_out), len(global_y_formula_class))
+
+                # Trim both arrays to the same length
+                global_y_test_out_trimmed = global_y_test_out[:min_len].argmax(dim=1)  # Convert to class labels
+                global_y_formula_class_trimmed = global_y_formula_class[:min_len]
+
+                if isinstance(global_y_formula_class_trimmed, np.ndarray):
+                    global_y_formula_class_trimmed = torch.tensor(global_y_formula_class_trimmed)
+
+                    # Convert to binary labels (0 or 1) for both outputs and formula
+                    global_y_test_binary = (global_y_test_out_trimmed == target_class).to(torch.int).flatten()  # Binary: 1 if equal to target_class, else 0
+                    global_y_formula_binary = (global_y_formula_class_trimmed == target_class).to(torch.int).flatten()
+
+                # Check the shapes of both arrays to ensure they are the same
+                print(f"global_y_test_binary shape: {global_y_test_binary.shape}")
+                print(f"global_y_formula_binary shape: {global_y_formula_binary.shape}")
+
+                # Ensure both arrays have the same length
+                min_len = min(global_y_test_binary.shape[0], global_y_formula_binary.shape[0])
+                global_y_test_binary = global_y_test_binary[:min_len]
+                global_y_formula_binary = global_y_formula_binary[:min_len]
+
+                # Now compute the accuracy score
+                global_explanation_fidelity_class = accuracy_score(global_y_test_binary.cpu(), global_y_formula_binary.cpu())
+
+                # Print the accuracy result
+                print(f"Global Explanation Fidelity Class Accuracy: {global_explanation_fidelity_class}")
+
+                global_y_formula_binary = (global_y_formula_class_trimmed == target_class).to(torch.int).flatten()
+
+                # Compute accuracy score with trimmed arrays
+                global_explanation_fidelity_class = accuracy_score(global_y_test_binary, global_y_formula_binary)
                 global_explanation_fidelity += global_explanation_fidelity_class
             global_explanation_accuracy += global_explanation_accuracy_class
             if concept_names is not None and global_explanation_class is not None:
@@ -296,12 +335,6 @@ for seed in range(n_seeds):
         if len(global_model_results_list) > 1:
             if global_model_results_list[-1][0]['test_acc_epoch'] < global_model_results_list[-2][0]['test_acc_epoch']:
                 print('Global model has reached best performance.')
-                global_model_results = global_trainer.test(copy.deepcopy(global_model), dataloaders=test_loader)
-                print('---------------------------')
-                print('Global model accuracy:', global_model_results[0]['test_acc_epoch'])
-                print('Global rule mean accuracy', global_explanation_accuracy / n_classes)
-                print('Global rule mean fidelity', global_explanation_fidelity / n_classes)
-                print('---------------------------')
                 with open(filename, 'a') as file:  # 'a' will append to the existing file
                     file.write('---------------------------\n')
                     file.write('Global model has reached best performance in the last epoch.\n')
@@ -313,8 +346,8 @@ for seed in range(n_seeds):
         global_model_results = global_trainer.test(copy.deepcopy(global_model), dataloaders=test_loader)
         print('---------------------------')
         print('Global model accuracy:', global_model_results[0]['test_acc_epoch'])
-        print('Global rule mean accuracy', global_explanation_accuracy/n_classes)
-        print('Global rule mean fidelity', global_explanation_fidelity/n_classes)
+        print('Global rule mean accuracy', global_explanation_accuracy / n_classes)
+        print('Global rule mean fidelity', global_explanation_fidelity / n_classes)
         print('---------------------------')
         with open(filename, 'a') as file:  # 'a' will append to the existing file
             file.write('---------------------------\n')
@@ -337,3 +370,6 @@ if explanations != None:
     # results_df.sem()
 else:
     print("No valid explanations")
+
+
+
