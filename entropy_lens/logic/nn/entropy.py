@@ -4,6 +4,7 @@ from typing import List
 import torch
 import re
 from sympy import simplify_logic
+from sklearn.ensemble import RandomForestClassifier
 
 from entropy_lens.logic.metrics import test_explanation
 from entropy_lens.logic.utils import replace_names
@@ -39,13 +40,22 @@ def explain_class(model: torch.nn.Module, x, y1h, x_val: torch.Tensor, y_val1h: 
     y_correct = conceptizator(y_correct1h[:, target_class])
     y_val = conceptizator(y_val1h[:, target_class])
 
+    x_correct_np = x_correct.numpy()
+    y_correct_np = y_correct.numpy()
+
+    rf_model = RandomForestClassifier()
+    rf_model.fit(x_correct_np, y_correct_np)
+
+    feature_weights = torch.tensor(rf_model.feature_importances_)
+
     class_explanation = ''
     class_explanation_raw = ''
     # use a n*n matrix to record concept co-occurrence
     class_concept_co_occ = {}
     class_concept_co_occ['positive'] = torch.zeros([len(feature_names), len(feature_names)])
     class_concept_co_occ['negative'] = torch.zeros([len(feature_names), len(feature_names)])
-
+    class_concept_co_occ['positive'] = feature_weights.unsqueeze(0) * class_concept_co_occ['positive']
+    class_concept_co_occ['negative'] = feature_weights.unsqueeze(0) * class_concept_co_occ['negative']
 
     for layer_id, module in enumerate(model.children()):
         if isinstance(module, EntropyLinear):
