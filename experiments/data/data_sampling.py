@@ -245,11 +245,61 @@ def mimic_iid(dataset, num_users):
         all_idxs = list(set(all_idxs) - dict_users[i])
     return dict_users
 
+def credit_card_iid(dataset, num_users):
+    """
+    Sample I.I.D. client data from MNIST dataset
+    :param dataset:
+    :param num_users:
+    :return: dict of image index
+    """
+    num_items = int(len(dataset)/num_users)
+    dict_users, all_idxs = {}, [i for i in range(len(dataset))]
+    for i in range(num_users):
+        dict_users[i] = set(np.random.choice(all_idxs, num_items,
+                                             replace=False))
+        all_idxs = list(set(all_idxs) - dict_users[i])
+    return dict_users
+
 
 def generate_random_numbers(target_sum, num_values):
     values = [0] + sorted(random.sample(range(1, target_sum), num_values - 1)) + [target_sum]
     return [values[i+1] - values[i] for i in range(num_values)]
 
+
+def credit_card_noniid(dataset, num_users):
+    lst = list(range(90))
+    num_users = int(num_users/2)
+    part_size = len(lst) // num_users
+    remaining = len(lst) % num_users
+
+    user_shard = [lst[i * part_size: (i + 1) * part_size] + ([lst[-remaining + i]] if i < remaining else [])
+                  for i in range(num_users)]
+
+    tensor = dataset.dataset.tensors[0][dataset.indices]
+    training_labels = dataset.dataset.tensors[1][dataset.indices]
+    result = []
+
+    for row in tensor:
+        max_val = row.max().item()
+        indices_of_max_vals = (row == max_val).nonzero(as_tuple=True)[0].numpy()
+        selected_index = np.random.choice(indices_of_max_vals)
+        result.append(selected_index)
+
+    input_class = torch.tensor(result)
+
+    # input_class = torch.argmax(dataset.dataset.tensors[0], dim=1)[dataset.indices].numpy()
+    dict_users = {}
+    for i in range(num_users):
+        dict_users[2 * i] = []
+        dict_users[2 * i + 1] = []
+        for idx, j in enumerate(result):
+            if j in user_shard[i]:
+                if training_labels[idx][0].item() == 1.:
+                    dict_users[2 * i].append(idx)
+                elif training_labels[idx][1].item() == 1.:
+                    dict_users[2 * i + 1].append(idx)
+
+    return dict_users
 
 def mimic_noniid(dataset, num_users):
     lst = list(range(90))

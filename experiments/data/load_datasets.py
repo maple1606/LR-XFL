@@ -78,6 +78,41 @@ def load_mimic(base_dir: str = 'experiments/data'):
     y = one_hot(torch.tensor(datay).to(torch.long)).to(torch.float)
     return x, y, features
 
+def load_credit_card(base_dir: str = 'experiments/data'):
+    data = pd.read_csv(f'{base_dir}/credit_card/UCI_Credit_Card.csv')
+    
+    fs = [
+        'LIMIT_BAL', 'SEX', 'EDUCATION', 'MARRIAGE', 'AGE', 
+        'PAY_0', 'PAY_2', 'PAY_3', 'PAY_4', 'PAY_5', 'PAY_6',
+        'BILL_AMT1', 'BILL_AMT2', 'BILL_AMT3', 'BILL_AMT4', 
+        'BILL_AMT5', 'BILL_AMT6', 'PAY_AMT1', 'PAY_AMT2', 
+        'PAY_AMT3', 'PAY_AMT4', 'PAY_AMT5', 'PAY_AMT6'
+    ]
+    
+    data1 = data[fs].values
+    target = data['default.payment.next.month'].values   
+    imp_mean = SimpleImputer(missing_values=np.nan, strategy='mean')
+    data1 = imp_mean.fit_transform(data1)
+    scaler = MinMaxScaler((0, 1))
+    data1 = scaler.fit_transform(data1)
+    est = KBinsDiscretizer(n_bins=3, encode='onehot-dense', strategy='uniform')
+    data1d = est.fit_transform(data1)
+    
+    f2d = []
+    for feature in fs:
+        f2d.append(feature + '_LOW')
+        f2d.append(feature + '_NORMAL')
+        f2d.append(feature + '_HIGH')
+    
+    features = fs + f2d
+    datax = np.hstack((data1, data1d))
+
+    datay = target
+   
+    x = torch.FloatTensor(datax)
+    y = one_hot(torch.tensor(datay).to(torch.long)).to(torch.float)
+    
+    return x, y, features
 
 def load_celldiff(base_dir='experiments/data'):
     gene_expression_matrix = pd.read_csv(f'{base_dir}/celldiff/data_matrix.csv', index_col=0)

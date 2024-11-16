@@ -18,8 +18,8 @@ import torch.nn.functional as F
 
 from entropy_lens.models.explainer import Explainer
 from entropy_lens.logic.metrics import formula_consistency
-from experiments.data.load_datasets import load_mimic, add_noise
-from experiments.data.data_sampling import mimic_iid, mimic_noniid, mimic_noniid_per_class
+from experiments.data.load_datasets import load_credit_card, add_noise
+from experiments.data.data_sampling import credit_card_iid, credit_card_noniid
 from experiments.local_training import local_train
 from experiments.utils import average_weights, average_weights_class, weighted_weights, max_weights, max_weights_class
 from experiments.global_logic_aggregate import _global_aggregate_explanations, client_selection_class
@@ -44,7 +44,7 @@ noise_type = 'non'
 # a client randomly generates a number between (0, 1), if the number > 0.8, it takes noise as input
 client_noise_threshold = 0.6
 
-x, y, concept_names = load_mimic()
+x, y, concept_names = load_credit_card()
 dataset = TensorDataset(x, y)
 train_size = int(len(dataset) * 0.9)
 val_size = (len(dataset) - train_size) // 2
@@ -80,16 +80,15 @@ per_class = True
 num_users = 10
 if sample == 'iid':
     # Sample IID user data from CUB
-    user_groups_train = mimic_iid(train_data, num_users)
+    user_groups_train = credit_card_iid(train_data, num_users)
 else:
     # Sample Non-IID user data from CUB based on the attribute
-    user_groups_train = mimic_noniid(train_data, num_users)
-    # user_groups_train = mimic_noniid_per_class(train_data, num_users)
+    user_groups_train = credit_card_noniid(train_data, num_users)
 
 
 ## 5-fold cross-validation with explainer network
 
-base_dir = f'./results/mimic-ii/explainer'
+base_dir = f'./results/credit-card/explainer'
 os.makedirs(base_dir, exist_ok=True)
 
 n_seeds = 1
@@ -100,7 +99,7 @@ explanations = {i: [] for i in range(n_classes)}
 # Constructing the filename
 filename = (
     f"results/"
-    f"MIMIC_"
+    f"CREDITCARD_"
     f"FL_"
     f"ClientNum_{num_users}_"
     f"{sample}_"
@@ -354,7 +353,7 @@ if explanations != None:
 
     results_df = pd.DataFrame(results_list)
     results_df['explanation_consistency'] = explanation_consistency
-    results_df.to_csv(os.path.join(base_dir, 'results_aware_mimic.csv'))
+    results_df.to_csv(os.path.join(base_dir, 'results_aware_credit_card.csv'))
     # results_df
     # results_df.mean()
     # results_df.sem()

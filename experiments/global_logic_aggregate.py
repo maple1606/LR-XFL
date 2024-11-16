@@ -9,17 +9,13 @@ from entropy_lens.logic.utils import replace_names
 
 
 def client_selection_class(n_classes, num_users, local_explanation_f):
-    print(n_classes)
-    print(num_users)
     # if all(value is None for value in local_explanation.values()):
     user_to_engage_class = {}
     # local_explanation_accuracy = {}
     local_explanations_accuracy_class = {}
     local_explanations_support_class = {}
 
-    for m in range(len(local_explanation_f)):
-        print(f"Client {m} explanations: {local_explanation_f[m]}")
-
+    all_users_details = [] 
 
     for target_class in range(n_classes):
         local_explanations_accuracy = {}
@@ -63,6 +59,25 @@ def client_selection_class(n_classes, num_users, local_explanation_f):
             user_to_engage_class[target_class] = users_to_keep - users_to_disgard
         else:
             user_to_engage_class[target_class] = set([m for m in range(num_users)])
+
+        for m in range(num_users):
+            user_details = {
+                "User ID": m,
+                "Target Class": target_class,
+                "Explanation": local_explanation_f[m][target_class]['explanation'] if local_explanation_f[m] and local_explanation_f[m][target_class] else None,
+                "Explanation Accuracy": local_explanation_f[m][target_class]['explanation_accuracy'] if local_explanation_f[m] and local_explanation_f[m][target_class] else None,
+                "Kept": m in user_to_engage_class[target_class],
+                "Discarded": m in users_to_disgard
+            }
+            all_users_details.append(user_details)
+    
+        for user_detail in all_users_details:
+            print(f"User {user_detail['User ID']} (Class {user_detail['Target Class']}):")
+            print(f"  Explanation: {user_detail['Explanation']}")
+            print(f"  Explanation Accuracy: {user_detail['Explanation Accuracy']}")
+            print(f"  Kept: {user_detail['Kept']}")
+            print(f"  Discarded: {user_detail['Discarded']}")
+            print("-" * 40)
 
     return user_to_engage_class, local_explanations_accuracy_class, local_explanations_support_class
 
