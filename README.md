@@ -1,3 +1,11 @@
+## Personal Note
+I'm really thankful to Ms. Yanci Zhang for introducing such an interesting take on AI. The concept of FL and how it can link to `wisdom of the crowd' really amazed me. 
+
+A huge thanks to my teammates for accompanying me and putting up with me. I know I can be unbearable sometimes and a bit of an unrealistic perfectionist (lol). After the presentation, I still remember when teacher Thuy said our team had great chemistry and that no one felt left behind. That was the best compliment I've received for this assignment.
+
+A special thanks also to teacher Ha Quang Thuy for guiding us, listening attentively to our presentation, and providing such a detailed review of our report — along with awarding us the highest score in the class! ^^ I know for sure there were still a lot of shortcomings, but the comments teacher Thuy gave us were really motivating.
+
+
 # LR-XFL: Logical Reasoning-based Explainable Federated Learning
 
 ## Overview

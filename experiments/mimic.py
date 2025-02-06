@@ -77,7 +77,7 @@ print(n_classes)
 sample = 'iid'
 # sample = 'non-iid'
 per_class = True
-num_users = 10
+num_users = 1
 if sample == 'iid':
     # Sample IID user data from CUB
     user_groups_train = mimic_iid(train_data, num_users)
@@ -206,7 +206,7 @@ for seed in range(n_seeds):
                 topk_explanations=3, target_class=target_class,
                 x=val_data.dataset.tensors[0][val_data.indices],
                 y=val_data.dataset.tensors[1][val_data.indices],
-                concept_names=concept_names, user_engagement_scale='large', connector=global_connector, beam_width=2)
+                concept_names=concept_names, user_engagement_scale='small', connector=global_connector, beam_width=2)
 
             # test the accuracy of the aggregated logic
             global_explanation_accuracy_class, global_y_formula_class = test_explanation(global_explanation_class,

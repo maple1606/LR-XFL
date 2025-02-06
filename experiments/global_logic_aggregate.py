@@ -70,14 +70,6 @@ def client_selection_class(n_classes, num_users, local_explanation_f):
                 "Discarded": m in users_to_disgard
             }
             all_users_details.append(user_details)
-    
-        for user_detail in all_users_details:
-            print(f"User {user_detail['User ID']} (Class {user_detail['Target Class']}):")
-            print(f"  Explanation: {user_detail['Explanation']}")
-            print(f"  Explanation Accuracy: {user_detail['Explanation Accuracy']}")
-            print(f"  Kept: {user_detail['Kept']}")
-            print(f"  Discarded: {user_detail['Discarded']}")
-            print("-" * 40)
 
     return user_to_engage_class, local_explanations_accuracy_class, local_explanations_support_class
 

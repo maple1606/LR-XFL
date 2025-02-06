@@ -82,12 +82,14 @@ def load_credit_card(base_dir: str = 'experiments/data'):
     data = pd.read_csv(f'{base_dir}/credit_card/UCI_Credit_Card.csv')
     
     fs = [
-        'LIMIT_BAL', 'SEX', 'EDUCATION', 'MARRIAGE', 'AGE', 
-        'PAY_0', 'PAY_2', 'PAY_3', 'PAY_4', 'PAY_5', 'PAY_6',
+        'LIMIT_BAL', 'EDUCATION', 'MARRIAGE', 'AGE', 
+        'PAY_0', 'PAY_2', 'PAY_3', 'PAY_4', 'PAY_5',
         'BILL_AMT1', 'BILL_AMT2', 'BILL_AMT3', 'BILL_AMT4', 
         'BILL_AMT5', 'BILL_AMT6', 'PAY_AMT1', 'PAY_AMT2', 
         'PAY_AMT3', 'PAY_AMT4', 'PAY_AMT5', 'PAY_AMT6'
     ]
+
+    pay_features = ['PAY_0', 'PAY_2', 'PAY_3', 'PAY_4', 'PAY_5']
     
     data1 = data[fs].values
     target = data['default.payment.next.month'].values   
@@ -100,11 +102,19 @@ def load_credit_card(base_dir: str = 'experiments/data'):
     
     f2d = []
     for feature in fs:
-        f2d.append(feature + '_LOW')
-        f2d.append(feature + '_NORMAL')
-        f2d.append(feature + '_HIGH')
+        if feature not in pay_features:
+            f2d.append(feature + '_LOW')
+            f2d.append(feature + '_NORMAL')
+            f2d.append(feature + '_HIGH')
+        else:
+            f2d.append(feature + '_GOOD')
+            f2d.append(feature + '_DUE')
+            f2d.append(feature + '_DELAYED')
     
-    features = fs + f2d
+    features = f2d
+    features.append('MARRIAGE')
+    features.append('SEX')
+
     datax = np.hstack((data1, data1d))
 
     datay = target

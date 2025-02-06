@@ -54,8 +54,6 @@ def explain_class(model: torch.nn.Module, x, y1h, x_val: torch.Tensor, y_val1h: 
     class_concept_co_occ = {}
     class_concept_co_occ['positive'] = torch.zeros([len(feature_names), len(feature_names)])
     class_concept_co_occ['negative'] = torch.zeros([len(feature_names), len(feature_names)])
-    class_concept_co_occ['positive'] = feature_weights.unsqueeze(0) * class_concept_co_occ['positive']
-    class_concept_co_occ['negative'] = feature_weights.unsqueeze(0) * class_concept_co_occ['negative']
 
     for layer_id, module in enumerate(model.children()):
         if isinstance(module, EntropyLinear):
@@ -92,6 +90,10 @@ def explain_class(model: torch.nn.Module, x, y1h, x_val: torch.Tensor, y_val1h: 
 
 
             connector = 'AND'
+
+            class_concept_co_occ['positive'] = feature_weights.unsqueeze(0) * class_concept_co_occ['positive']
+            class_concept_co_occ['negative'] = feature_weights.unsqueeze(0) * class_concept_co_occ['negative']
+
             if rules_length == 0:
                 # Handle the case where no valid rules are generated
                 print("No valid rules generated.")
